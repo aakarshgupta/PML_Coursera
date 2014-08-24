@@ -1,0 +1,138 @@
+---
+title: "Practical Machine Learning"
+author: "Aakarsh"
+date: "Monday, August 24, 2014"
+output: html_document
+---
+
+This writeup illustrates the step by step process followed in building the model and predicting the test outputs.
+
+Data Import and EDA
+----------------------
+
+The training and test datasets were downloaded to local directory 
+```{r1,cache=TRUE,echo=FALSE}
+#Training
+#trainUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+#download.file(trainUrl,"D:/Akki/R/train.csv",method="curl")
+training <- read.csv("D:/Akki/R/train.csv")
+
+#Test
+#testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+#download.file(testUrl,"D:/Akki/R/test.csv",method="curl")
+test <- read.csv("D:/Akki/R/test.csv")
+```
+
+The training and test data had the following dimensions:
+
+```{r2,cache=TRUE}
+#Training
+dim(training)
+#Test
+dim(test)
+```
+
+The training data had multiple columns with NA's and Null values.
+All these columns were removed to firstly reduce the prediction variable pool and also to ensure garbage variables
+
+```{r3,cache=TRUE,echo=FALSE}
+
+a <- matrix(nrow=160,ncol=3)
+for(i in 1:160) 
+{a[i,2]<-length(which(!is.na(training)[,i]==FALSE));
+a[i,3]=i}
+a[,1] <- colnames(training)
+
+b <- a[which(a[,2]==0),]
+
+c <- as.numeric(b[,3])
+
+training2 <- training[,c]
+
+col <- ncol(training2)
+
+a1 <- matrix(nrow=col,ncol=3)
+for(i in 1:col) 
+{a1[i,2]<-length(which(is.numeric(training2[,i])==FALSE));
+ a1[i,3]=i}
+a1[,1] <- colnames(training2)
+
+b1 <- a1[which(as.numeric(a1[,2])==0),]
+
+c1 <- as.numeric(b1[,3])
+c1[length(c1)+1] <- 82
+
+training3 <- training2[,c1]
+training4 <- training3[,-c(1:4)]
+```
+
+The training data showed the following three levels for the "classe" variable
+
+```{r4,cache=TRUE}
+levels(training4$classe)
+table(training4$classe)
+```
+
+To remove the record with "Null" as level , i performed the following operation
+
+```{r5,cache=TRUE}
+training5 <- training4
+training5$classe <- as.character(training4$classe)
+training6<- training5[which(training5$classe=="A"),]
+training6b <- training5[which(training5$classe=="B"),]
+training7<- rbind(training6,training6b)
+```
+
+This completed the treatment for training data. A similar set of operations were performed for the test data to have only the relevant set of variables
+
+```{r6,cache=TRUE}
+#c and c1 were defined during the training treatment
+test2 <- test[,c]
+test3 <- test2[,c1]
+test4 <- test3[,-c(1,2,3,4,48)]
+```
+
+
+Model building
+--------------
+
+Density graphs were plotted to check the distribution of data
+```{r7}
+plot(density(training7[,4]))
+```
+
+As random forest classification does not demand for variable center and scaling, this process was eliminated. 
+
+The **random forest** model was then created using the commands below and the model was applied to the test dataset to arrive at the predictions.
+
+```{r8, cache=TRUE}
+library(randomForest)
+model <- randomForest(as.factor(classe) ~ .,data = training7)
+predictions <- predict(model,test4)
+```
+
+The model stats are as follows:
+```{r9,cache=TRUE}
+# type
+model$type
+
+#mean decrease in Gini Index (sample only)
+head(model$importance)
+
+#number of trees grown
+model$ntree
+
+#number of predictors sampled for spliting at each node
+model$mtry
+
+# vector error rates of the prediction on the input data (sample only)
+head(model$err.rate) 
+
+#number of times cases are 'out-of-bag' (sample only)
+head(model$oob.times)
+
+#confusion matrix
+model$confusion
+```
+
+This concludes the assignment activity
